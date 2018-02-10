@@ -1,0 +1,192 @@
+##Linear Regression Using Boston Dataset
+#Import the Packages
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from patsy import dmatrices
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
+%matplotlib inline
+
+#Import the dataset
+boston = pd.read_csv("E:\R & Python Documents\R Machine Learning\Data Sets\Boston.csv", index_col=0)
+
+#Exploratory Data Analysis on the Dataset
+boston.head()
+boston.describe()
+boston.info()
+
+#Pair plot to know the correlation
+sns.pairplot(boston)
+
+fig, ax = plt.subplots(figsize=(10,10))  
+sns.heatmap(boston.corr(),annot=True,cmap="coolwarm", linewidths=.5)
+
+boston.columns
+X = boston[['crim', 'zn', 'indus', 'nox', 'rm', 'age', 'dis', 'ptratio', 'black', 'lstat', 'chas','rad', 'tax' ]]
+y = boston['medv']
+
+#Convert the columns into long 
+boston['crim'] = boston.crim.astype(long)
+boston['zn']   = boston.zn.astype(long)
+boston['indus']= boston.indus.astype(long)
+boston['chas'] = boston.chas.astype(long)
+boston['nox']  = boston.nox.astype(long)
+boston['rm']   = boston.rm.astype(long)
+boston['age']  = boston.age.astype(long)
+boston['dis']  = boston.dis.astype(long)
+boston['rad']  = boston.rad.astype(long)
+boston['tax']  = boston.tax.astype(long)
+boston['ptratio']= boston.ptratio.astype(long)
+boston['black']  = boston.black.astype(long)
+boston['lstat']  = boston.lstat.astype(long)
+boston['medv']   = boston.medv.astype(long)
+
+boston.info()
+
+##Split the data into Train and Test
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=101)
+
+##Build a Random forest to identify the Important Variables
+from sklearn.ensemble import RandomForestClassifier
+rfc = RandomForestClassifier(n_estimators=1500,max_features=2,oob_score=True)
+rfc.fit(X_train, y_train)
+
+features = X.columns
+importances = rfc.feature_importances_
+indices = np.argsort(importances)
+
+plt.figure(figsize=(10,6))
+plt.title('Feature Importances')
+plt.barh(range(len(indices)), importances[indices], color='b', align='center')
+plt.yticks(range(len(indices)), features[indices])
+plt.xlabel('Relative Importance')
+plt.show()
+
+##Create new Dependent and Independent Variables based on the RF
+X = boston[['lstat','age','black', 'dis','tax','crim','rm', 'indus','ptratio' ,'rad' ,'zn' ,'chas' ,'nox' ]]
+y = boston['medv']
+
+## Split the Data
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=101)
+
+##Build the Linear Regression Model
+from sklearn.linear_model import LinearRegression
+lm = LinearRegression()
+lm.fit(X_train,y_train)
+
+#Predict on the Test Data
+predictions = lm.predict(X_test)
+
+#Plot A scatter plot to Know the difference in the Predictions made
+plt.scatter(y_test,predictions)
+sns.distplot((y_test-predictions),bins=50);
+
+#Evaluate the Model
+from sklearn import metrics
+print('MAE:', metrics.mean_absolute_error(y_test, predictions))
+print('MSE:', metrics.mean_squared_error(y_test, predictions))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, predictions)))
+
+##Build the Linear Regression to depict the P values
+from statsmodels.api import add_constant
+X2 = add_constant(X_train)
+lm = sm.OLS(y_train,X2)
+lin = lm.fit()
+lin.pvalues
+
+print(lin.summary())
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                   medv   R-squared:                       0.663
+Model:                            OLS   Adj. R-squared:                  0.653
+Method:                 Least Squares   F-statistic:                     72.17
+Date:                Fri, 09 Feb 2018   Prob (F-statistic):           7.05e-65
+Time:                        20:01:10   Log-Likelihood:                -915.93
+No. Observations:                 303   AIC:                             1850.
+Df Residuals:                     294   BIC:                             1883.
+Df Model:                           8                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const         18.0837      3.927      4.605      0.000      10.355      25.812
+crim          -0.0255      0.042     -0.605      0.545      -0.109       0.057
+indus         -0.0269      0.078     -0.347      0.729      -0.179       0.126
+rm             2.7788      0.475      5.844      0.000       1.843       3.715
+age            0.0017      0.017      0.103      0.918      -0.031       0.035
+dis           -0.7809      0.228     -3.424      0.001      -1.230      -0.332
+black          0.0065      0.004      1.757      0.080      -0.001       0.014
+lstat         -0.7808      0.067    -11.598      0.000      -0.913      -0.648
+tax           -0.0059      0.003     -2.086      0.038      -0.011      -0.000
+==============================================================================
+Omnibus:                      131.081   Durbin-Watson:                   1.823
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              539.096
+Skew:                           1.841   Prob(JB):                    8.65e-118
+Kurtosis:                       8.398   Cond. No.                     7.71e+03
+==============================================================================
+
+##Identify Multi Correlation using the Variance Inflation Factor
+dat1 = boston[['lstat','age','black', 'dis','tax','crim','rm', 'indus','ptratio' ,'rad' ,'zn' ,'chas' ,'nox' ]]
+
+from patsy import dmatrices
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
+
+vif = pd.DataFrame()
+vif["VIF Factor"] = [variance_inflation_factor(dat1.values, i) for i in range(dat1.shape[1])]
+vif["features"] = dat1.columns
+vif
+
+##Create the New Dependent and Independent Variables to predict the model
+X = boston[['lstat','age','black', 'dis','crim','indus','rad' ,'zn' ,'chas' ]]
+y = boston['medv']
+
+#Split the Data
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=101)
+
+#Build the Model
+from statsmodels.api import add_constant
+X2 = add_constant(X_train)
+lm = sm.OLS(y_train,X2)
+lin = lm.fit()
+lin.pvalues
+print(lin.summary())
+
+
+
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                   medv   R-squared:                       0.664
+Model:                            OLS   Adj. R-squared:                  0.654
+Method:                 Least Squares   F-statistic:                     64.42
+Date:                Fri, 09 Feb 2018   Prob (F-statistic):           2.97e-64
+Time:                        20:33:27   Log-Likelihood:                -915.16
+No. Observations:                 303   AIC:                             1850.
+Df Residuals:                     293   BIC:                             1887.
+Df Model:                           9                                         
+Covariance Type:            nonrobust                                         
+==============================================================================
+                 coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------
+const         34.3570      2.363     14.537      0.000      29.706      39.008
+lstat         -0.9210      0.060    -15.375      0.000      -1.039      -0.803
+age            0.0154      0.017      0.912      0.363      -0.018       0.049
+black          0.0057      0.004      1.523      0.129      -0.002       0.013
+dis           -1.1863      0.248     -4.787      0.000      -1.674      -0.699
+crim          -0.0609      0.044     -1.390      0.166      -0.147       0.025
+indus         -0.1553      0.068     -2.271      0.024      -0.290      -0.021
+rad            0.0046      0.049      0.095      0.924      -0.091       0.100
+zn             0.0721      0.019      3.829      0.000       0.035       0.109
+chas           5.9938      1.221      4.910      0.000       3.591       8.396
+==============================================================================
+Omnibus:                      106.907   Durbin-Watson:                   1.923
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              336.221
+Skew:                           1.571   Prob(JB):                     9.79e-74
+Kurtosis:                       7.093   Cond. No.                     3.07e+03
+==============================================================================
