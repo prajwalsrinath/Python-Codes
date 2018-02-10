@@ -1,0 +1,98 @@
+##Linear Regression with Housing Data Set
+
+#Import the Packages
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from patsy import dmatrices
+import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
+%matplotlib inline
+
+#Import the Datasets
+data = pd.read_csv("E:\R & Python Documents\R Machine Learning\Data Sets\USA_Housing.csv")
+
+#Exploratory Data Analysis
+data.head()
+data.info()
+data.describe()
+
+#Pair and Scatter Plot to Identify Correlation
+sns.pairplot(data)
+sns.heatmap(data.corr())
+
+data.columns
+
+#Create Dependent and Independent Variables
+X = data[['Avg. Area Income', 'Avg. Area House Age', 'Avg. Area Number of Bedrooms', 'Area Population']]
+y = data['Price']
+
+#Split the Dataset into Train and Test
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=101)
+
+#Build the Linear Regression Model
+from sklearn.linear_model import LinearRegression
+lm = LinearRegression()
+lm.fit(X_train,y_train)
+
+#Predict on the Test Data
+predictions = lm.predict(X_test)
+
+#Evaluate the Model Built
+plt.scatter(y_test,predictions)
+sns.distplot((y_test-predictions),bins=50);
+
+from sklearn import metrics
+print('MAE:', metrics.mean_absolute_error(y_test, predictions))
+print('MSE:', metrics.mean_squared_error(y_test, predictions))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, predictions)))
+
+('MAE:', 116686.48048598479)
+('MSE:', 21940912252.578831)
+('RMSE:', 148124.65106314624)
+
+#Build the Model to Depict the P values
+from statsmodels.api import add_constant
+X2 = add_constant(X_train)
+lm = sm.OLS(y_train,X2)
+lin = lm.fit()
+lin.pvalues
+
+print(lin.summary())
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:                  Price   R-squared:                       0.824
+Model:                            OLS   Adj. R-squared:                  0.823
+Method:                 Least Squares   F-statistic:                     3498.
+Date:                Fri, 09 Feb 2018   Prob (F-statistic):               0.00
+Time:                        16:00:21   Log-Likelihood:                -39957.
+No. Observations:                3000   AIC:                         7.992e+04
+Df Residuals:                    2995   BIC:                         7.995e+04
+Df Model:                           4                                         
+Covariance Type:            nonrobust                                         
+================================================================================================
+                                   coef    std err          t      P>|t|      [0.025      0.975]
+------------------------------------------------------------------------------------------------
+const                        -1.949e+06   2.76e+04    -70.653      0.000      -2e+06   -1.89e+06
+Avg. Area Income                21.3155      0.255     83.724      0.000      20.816      21.815
+Avg. Area House Age           1.625e+05   2763.369     58.800      0.000    1.57e+05    1.68e+05
+Avg. Area Number of Bedrooms  4.829e+04   2185.290     22.096      0.000     4.4e+04    5.26e+04
+Area Population                 15.4110      0.270     57.138      0.000      14.882      15.940
+==============================================================================
+Omnibus:                        3.140   Durbin-Watson:                   1.997
+Prob(Omnibus):                  0.208   Jarque-Bera (JB):                3.083
+Skew:                           0.063   Prob(JB):                        0.214
+Kurtosis:                       3.094   Cond. No.                     8.02e+05
+==============================================================================
+
+dat1 = data[['Avg. Area Income', 'Avg. Area House Age', 'Avg. Area Number of Bedrooms',
+          'Area Population']]
+
+#Variance Inflation Factor
+from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
+vif = pd.DataFrame()
+vif["VIF Factor"] = [variance_inflation_factor(dat1.values, i) for i in range(dat1.shape[1])]
+vif["features"] = dat1.columns
+vif
