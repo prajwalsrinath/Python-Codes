@@ -1,0 +1,112 @@
+Logistic Regression Using diabetes dataset in Python
+##Import Libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+##Inport the data
+df=pd.read_csv("E:\R & Python Documents\R Machine Learning\Data Sets\diabetes.csv")
+
+##To see the Structure of the data
+df.info()
+
+## To see the summary of the data
+df.describe()
+
+##Build a Correlation plot to check for Multi correlation
+fig, ax = plt.subplots(figsize=(10,10)) 
+sns.heatmap(df.iloc[:,[0,1,2,3,4,5,6,7]].corr(),annot=True,cmap="coolwarm", linewidths=.5)
+
+## Split the Dependent and Independent Variables
+X = df[['npreg','glu','bp','skin','sein','bmi','ped','age']]
+y = df['type']
+
+## Count Plot
+sns.pairplot(df[["glu","type"]],hue="type")
+
+##Split the data into Train and Test
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=101)
+
+## Building a Random Forest model to Find the Importance Variables
+from sklearn.ensemble import RandomForestClassifier
+rfc = RandomForestClassifier(n_estimators=1500,max_features=3,oob_score=True)
+rfc.fit(X_train, y_train)
+
+features = X.columns
+importances = rfc.feature_importances_
+indices = np.argsort(importances)
+
+#Plot the Graph 
+plt.figure(figsize=(10,6))
+plt.title('Feature Importances')
+plt.barh(range(len(indices)), importances[indices], color='b', align='center')
+plt.yticks(range(len(indices)), features[indices])
+plt.xlabel('Relative Importance')
+plt.show()
+
+## Create a different set of Dependent and Independent Variables based on RF 
+X1 = df[['glu','bmi','age','ped','bp']]
+y1 = df['type']
+
+##Split the data
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X1,y1,test_size=0.3,random_state=1)
+
+##Build the Logistic Regression Model
+from sklearn.linear_model import LogisticRegression
+log_reg=LogisticRegression(C = 1e9)
+
+##Make the Predictions
+log_reg.fit(X_train,y_train)
+pred_train=log_reg.predict(X_train)
+
+##Predict on the Test Data
+log_reg.fit(X_train,y_train)
+pred=log_reg.predict(X_test)
+pd.crosstab(y_test,pred)
+
+from sklearn import metrics
+fpr, tpr, threshold= metrics.roc_curve(y_test, pred1[:,1])
+plt.plot(fpr, tpr, label='ROC curve', color='b')
+plt.axes().set_aspect('equal')
+plt.xlim([-0.05, 1.05])
+plt.ylim([-0.05, 1.05])
+
+##Calculate the AUC
+AUC= metrics.auc(fpr,tpr)
+
+## Calculations from the Confusion Matrix
+TP=7.0
+TN=23.0
+FP=4.0
+FN=6.0
+#error on the test data
+accuracy= float((TP+TN)/len(y_test))
+error=float((FP+FN)/len(y_test))
+print ("Accuracy is ")+ str(accuracy)
+print ("error is ")+ str(error)
+#print the coefficients
+print "the coefficients are "+ str(log_reg.coef_)
+print "the intercept is "+ str(log_reg.intercept_)
+
+##Modify the Threshold based on the ROC  
+x=[]
+for i in range(len(pred1[:,1])):
+    if (pred1[:,1][i]>=0.4):
+        x.append(1)
+    else:
+        x.append(0)
+x=np.array(x)
+pd.crosstab(y_test,x)
+
+## Build the Logistic Regression model to depict the P values
+import statsmodels.discrete.discrete_model as sm
+from statsmodels.api import add_constant
+X2 = add_constant(X_train)
+logit = sm.Logit(y_train, X2)
+
+result = logit.fit()
+print result.summary()
