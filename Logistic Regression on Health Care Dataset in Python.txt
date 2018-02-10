@@ -1,0 +1,235 @@
+# Logistic Regression on Health Care Dataset
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+df=pd.read_csv("E:\R & Python Documents\R Machine Learning\Data Sets\quality.csv", index_col=0)
+
+#proportion of 1;s and 0's
+df['PoorCare'].value_counts()
+#So a baseline model will always predict 0 and its accuracy will be
+# 98/(98+33)=  74.8%
+#so out logistic regression should score more than this ..
+
+#BIVARIATE ANALYSIS
+#lets Analyse the Column InpatientDays wrt the DV Poor Care
+#Inpatient Days is a Continuous Independent variable
+#so lets draw a histogram and color it on basis of the DV
+
+sns.pairplot(df[["InpatientDays","PoorCare"]],hue="PoorCare")
+
+#if we see the first plot carefully, both colors 0 and 1 appear in all of the bars..
+#if we had any bar of one single color, we could make use of it to predict PoorCare
+#hence this variable doesnt look to be significant
+
+#lets try DaysSinceLastERVisit
+
+sns.pairplot(df[["DaysSinceLastERVisit","PoorCare"]],hue="PoorCare")
+
+#This plot looks interesting as the 3rd, 6th to 9th bar are purely 0;s. This is what we were loking for .
+#it seems this variable maybe inportant. Lets keep it for including in our model
+#Similarly I found --> Narcotics, Pain, TotalVisit to be somewhat significant.
+#this might be difficult sometime, hence we will also have a look at the P vlaues to confirm that
+#these variables are significant
+
+#but since these variables DaysSinceLastERVisit, Narcotics, Pain, TotalVisit are 
+#continuous We might have to check for multicollinearity.
+#only if these are not corelated we can use them in Modeling
+#lets select these columns by their indexes
+
+fig, ax = plt.subplots(figsize=(5,5))  
+sns.heatmap(df.iloc[:,[4,5,6,7]].corr(),annot=True,cmap="coolwarm", linewidths=.5)
+#No significant co-relation observed.
+
+#StartedOnCombination is a categorical variable taking only True and False
+#this is a case of both DV and IV being Categorical. We can study this by a pLot or by a cross tab
+
+pd.crosstab(df['PoorCare'],df['StartedOnCombination'])
+
+# this means that if StartedOnCombination is True for any patient, he must have received POOR
+#Care sicne 5 f them received Poor Care and Only 1 received Good Care.
+#so this variable is also Significant.
+#lets use this variable as well in our Model
+# but we will have to convert it to dummy variable as this is categorical
+# TO read more about this..watch the LINEAR REGRESSION CASE STUDY VIDEO.
+#IT has details on DUMMY VARIABLES concept and codes
+
+temp=pd.get_dummies(df['StartedOnCombination'],drop_first=True)
+
+#merge this with original dataset
+
+df_final=pd.concat([df,temp],axis=1)
+
+#We no longer need the original StartedOnCombination as we have created dummies for it,
+#so lets delete this StartedOnCombination from the df_final
+
+df_final=df_final.drop(['StartedOnCombination'],axis=1)
+
+print df_final.columns # this tells us that the dummy variable created for StartOnCombination 
+# is named True. We will add this to our model
+
+#lets start buliding the model
+from sklearn.linear_model import LogisticRegression
+log_reg=LogisticRegression(C = 1e9) 
+
+X = df_final[['InpatientDays','ERVisits','OfficeVisits','Narcotics','DaysSinceLastERVisit','Pain','TotalVisits','ProviderCount',
+              'MedicalClaims','ClaimLines','AcuteDrugGapSmall',True]]
+y = df_final['PoorCare']
+
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=101)
+
+from sklearn.ensemble import RandomForestClassifier
+rfc = RandomForestClassifier(n_estimators=1500,max_features=4,oob_score=True)
+rfc.fit(X_train, y_train)
+
+features = X.columns
+importances = rfc.feature_importances_
+indices = np.argsort(importances)
+
+plt.figure(figsize=(10,6))
+plt.title('Feature Importances')
+plt.barh(range(len(indices)), importances[indices], color='b', align='center')
+plt.yticks(range(len(indices)), features[indices])
+plt.xlabel('Relative Importance')
+plt.show()
+
+#similar to what we do n Linear regression we split the data into 2 parts..
+# And define the DV and IVs.
+
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(df_final[["DaysSinceLastERVisit","Narcotics","Pain","TotalVisits",True]],df_final['PoorCare'],test_size=0.3,random_state=1)
+
+#predict on train data
+
+log_reg.fit(X_train,y_train)
+pred_train=log_reg.predict(X_train)
+pd.crosstab(y_train,pred_train)
+
+#accuracy=(70+9)/(70+9+11+1)
+#accuracy=86% on training data
+
+log_reg.fit(X_train,y_train)
+pred=log_reg.predict(X_test)#to get the output as 1's and 0's
+#by assuming t=0.5
+
+#confusion matrix
+pd.crosstab(y_test,pred)
+
+TP=7.0
+TN=23.0
+FP=4.0
+FN=6.0
+#error on the test data
+accuracy= float((TP+TN)/len(y_test))
+error=float((FP+FN)/len(y_test))
+print ("Accuracy is ")+ str(accuracy)
+print ("error is ")+ str(error)
+#print the coefficients
+print "the coefficients are "+ str(log_reg.coef_)
+print "the intercept is "+ str(log_reg.intercept_)
+#we have got 75% accuracy, better than the baseline model
+#similarly you can also calulate Sensitivity, Specificity and Precision
+
+Accuracy is 0.75
+error is 0.25
+the coefficients are [[ -2.34777294e-03   1.32117981e-01  -3.96613720e-02   5.94438370e-02
+    2.74713754e+00]]
+the intercept is [-1.52482037]
+
+pred1=log_reg.predict_proba(X_test)# to get probabilities instead of classes
+
+from sklearn import metrics
+#lets us look at ROC curve
+#dont worry about the codes fro ROC curve.. You dont have to remember it.. Just know its application
+#to read more about ROC curve refer---->
+# http://blog.yhat.com/posts/roc-curves.html or http://www.dataschool.io/roc-curves-and-auc-explained/
+
+fpr, tpr, threshold= metrics.roc_curve(y_test, pred1[:,1]) #pass the actual test DV and 
+
+#predicted probability (only P(y)=1)
+#**********DRAW ROC CURVE**************
+
+plt.plot(fpr, tpr, label='ROC curve', color='b')
+plt.axes().set_aspect('equal')
+plt.xlim([-0.05, 1.05])
+plt.ylim([-0.05, 1.05])
+
+AUC= metrics.auc(fpr,tpr) # to get the area under the Curve
+print AUC #78% which is good. this means model is covering 78% of the datapoints well. Best value is 1
+#worst is 0
+
+
+#CONVERT THE PROBABILITITS TO 1'S AND 0'S APPLYING OUT OWN THRESHOLD
+#HERE 0.40
+x=[]
+for i in range(len(pred1[:,1])):
+    if (pred1[:,1][i]>=0.4):
+        x.append(1)
+    else:
+        x.append(0)
+x=np.array(x)
+pd.crosstab(y_test,x)
+
+#output 2
+TP=8.0
+TN=23.0
+FP=4.0
+FN=5.0
+#error on the test data
+accuracy= float((TP+TN)/len(y_test))
+error=float((FP+FN)/len(y_test))
+print accuracy
+print error
+#slightly better than before
+#similarly you can also calulate Sensitivity, Specificity and Precision
+
+import statsmodels.discrete.discrete_model as sm
+from statsmodels.api import add_constant
+X2 = add_constant(X_train)
+
+from pandas.core import datetools
+logit = sm.Logit(y_train, X2)
+
+result = logit.fit()
+print result.summary()
+
+                           Logit Regression Results                           
+==============================================================================
+Dep. Variable:               PoorCare   No. Observations:                   91
+Model:                          Logit   Df Residuals:                       85
+Method:                           MLE   Df Model:                            5
+Date:                Sat, 10 Feb 2018   Pseudo R-squ.:                  0.2962
+Time:                        20:31:19   Log-Likelihood:                -33.727
+converged:                       True   LL-Null:                       -47.923
+                                        LLR p-value:                 3.050e-05
+========================================================================================
+                           coef    std err          z      P>|z|      [0.025      0.975]
+----------------------------------------------------------------------------------------
+const                   -1.5322      0.805     -1.904      0.057      -3.109       0.045
+DaysSinceLastERVisit    -0.0023      0.001     -1.903      0.057      -0.005    6.97e-05
+Narcotics                0.1324      0.044      3.040      0.002       0.047       0.218
+Pain                    -0.0398      0.027     -1.472      0.141      -0.093       0.013
+TotalVisits              0.0597      0.036      1.662      0.096      -0.011       0.130
+True                     2.7626      1.409      1.961      0.050       0.001       5.524
+========================================================================================
+
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(df_final[["DaysSinceLastERVisit","Narcotics",True]],df_final['PoorCare'],test_size=0.3,random_state=1)
+
+log_reg=LogisticRegression(C = 1e9)
+log_reg.fit(X_train,y_train)
+
+#predict on test
+pred=log_reg.predict(X_test)#to get the output as 1's and 0's
+#by assuming t=0.5
+
+#confusion matrix
+pd.crosstab(y_test,pred)
+#test data accuracy= 27+5=32
+​
+print "accuracy is "+ str(32.0/40) #80% better than previous result and very close to train data accuracy (86%).
+#this is random variation.
+#hence overfitting has been removed. 
