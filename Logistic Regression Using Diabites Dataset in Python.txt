@@ -109,4 +109,4 @@ X2 = add_constant(X_train)
 logit = sm.Logit(y_train, X2)
 
 result = logit.fit()
-print result.summary()
+print result.summary() 
