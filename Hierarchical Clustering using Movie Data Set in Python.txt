@@ -1,0 +1,124 @@
+Hierarchical Clustering using Movie Data Set
+#_____________________DATA________________________
+# the data set has details of various Hollywood movies
+# It is in a text format, each column is separated by a | (pipe)
+# there are no column names. the names of the columns are as below- use these
+# "ID","Title","Release_Date","Video_Release_Date","IMDB",
+# "Unknown","Action",#"Adventure","Animation","Childrens","Comedy","Crime","Documentary"
+# "Drama","Fantasy","FilmNoir","Horror","Musical","Mystery","Ramance","Sci-fi",
+# "Thriller","War","Western"
+# the column names Unknown to Western are all genre of the movies--
+# Unknown means--Genre for that movies unknown.
+​
+#___________________REQUIREMENT__________________
+# so you have data on several movies. We will use a content filtering approach of recommendation system
+# that is. we will only use the properties of the movies to create similar groups
+# if you forgot what is Content & Collaborative filtering, go back to the classroom videos.
+# We will create some groups of similar movies and if a person like any movie in a group 
+# we will recommend him other movies in the same group. This is a very basic RECMMENDATION ENGINE.
+# of course what companies like amazon,netflix,etc use are complex algorithms but this forms the base.
+# Clean the data and get rid of unwanted columns that you feel will not be used for Clustering.
+# there might be duplicate rows in the data. Get rid of those as well.
+# bring the data to a well structured format to start the clustering process
+​
+import pandas as pd
+import numpy as np
+columns=["ID","Title","Release_Date","Video_Release_Date","IMDB","Unknown","Action",
+         "Adventure","Animation","Childrens","Comedy","Crime","Documentary",
+        "Drama","Fantasy","FilmNoir","Horror","Musical","Mystery","Ramance","Sci-fi",
+        "Thriller","War","Western"]
+df=pd.read_csv("data.txt",sep="|",names=columns)
+
+df.head()
+
+#cleaning the data
+#lets see of there are duplicates in the dataframe-
+print sum(df.duplicated('Title'))
+#so there are some duplicates. Lets remove the duplicates
+
+# ID is just serial number, I can identify the movie from its Tilte
+# Release Data, Video_release date is not needed for clustering
+# IMDB is just the IMDB link-not needed
+# we can also use this to find which movies are repeating more than once
+# names = df.Title.value_counts()
+# print names[names > 1]
+print df.shape
+
+#delete duplicates
+df.drop_duplicates(subset=['Title'],inplace=True)
+print df.shape 
+# deleted 18 duplicates
+
+#remove unwanted columns
+movies=df.drop(['ID','Release_Date','Video_Release_Date','IMDB'],axis=1)
+print movies.head()
+
+#Write of codes for hierarchical clustering here
+from scipy.cluster.hierarchy import dendrogram, linkage #this will be useful for hierarchical Clusters
+import matplotlib.pyplot as plt
+%matplotlib inline
+M = movies.drop(['Title'],axis=1)
+print M
+
+Z = linkage(M, 'ward')#to calculate dist, pass all variables except Title
+
+# draw the dendogram and decide what is the best choice of the number of clusters.
+# Dont just decide based on dendogram, the # of clusters should also make sense.
+# Use your understanding of movies to decide, int how many groups should you divide all exsting movies
+# e.g. May be Action, War, Adventure, Sci-fi genre can be put in one group, similarly for others..
+​
+# calculate full dendogram
+plt.figure(figsize=(20, 10))
+plt.title('Hierarchical Clustering Dendrogram')
+plt.xlabel('Movies',fontsize=30)
+plt.ylabel('distance',fontsize=30)
+dendrogram(Z,leaf_rotation=90.,leaf_font_size=10)
+# leaf_rotation -----rotates the x axis labels
+# leaf_font_size----font size for the x axis labels
+plt.show()
+# you see the black color at the bottom because there are too many movies. It it wont affect our understanding.
+
+Create the clusters
+# we can clearly see that the dendogram suggests taking 3 clusters--ie we keep a horizontal line
+# between distance(y axis) 15-20. this will have maximum free movement.
+# BUT AT TEH SAME TIE I FEEL HAVING JUST 3 TYPES OF MOVIES WILL NOT MAKE MUCH SENSE. SO I WILL SELCT 8 CLUSTERS.. 
+# I WILL ASSUME THERE ARE OVERALL 7 TYPES OF MOVIES
+from scipy.cluster.hierarchy import fcluster
+k=7 
+# from BUSINESS UNDERSTANDING
+clusters = fcluster(Z, k, criterion='maxclust') 
+
+#Add the cluster Numbers into the cleaned DataFrame that you used earlier.
+movies['Cluster']=clusters
+movies.head(4)
+
+#prove that the Clustering that you have done Makes sense. Study Each CLuster that you have formed.
+#May be descriptive statistics of each clusters might help.
+#Do something to convince your audience. Create some plots..
+​
+#lest see the 3 of ovies in each cluster
+print movies['Cluster'].value_counts()
+
+#lets see which genres occupy most of the Cluster 1,2 and so on-
+movies_plot=movies.groupby(['Cluster']).mean()
+movies.groupby(['Cluster']).mean()
+
+#above tells us the following
+#68% of action, 40% of adventure, 17% drama, 33%sci-fi, 30% thriller & 16.5% war movies ---> Cluster 4
+#clusters 4 is probably what an Adult would prefer.
+#similarly Cluster 6 is mainly for children/Family..it comprises of 40% animation, 87% children, 45% comedy & 20% musical.
+#note that the total wont come to 100% as a movie can have multiple genres.
+
+#lets plot the above..
+import seaborn as sns
+plt.figure(figsize=(25, 12))
+g=sns.heatmap(movies_plot,cmap="Greens")
+# https://matplotlib.org/users/colormaps.html for some amazing colors
+g.set_yticklabels(g.get_yticklabels(), rotation = 0, fontsize = 20)
+g.set_xticklabels(g.get_xticklabels(), rotation = 40, fontsize = 20)
+plt.title('Movie Clusters',fontsize=40)
+plt.xlabel('Movie Genres',fontsize=20)
+plt.ylabel('Clusters',fontsize=20)
+
+#browse a few movies inneach cluster
+movies[movies['Cluster']==6]['Title'].head() #children movies
