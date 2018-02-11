@@ -1,0 +1,55 @@
+K Mean Clustering Using Movie Dataset In Python
+# needed imports
+from matplotlib import pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage #this will be useful for heirarchical Clusters
+import numpy as np
+import pandas as pd
+%matplotlib inline
+np.set_printoptions(precision=5, suppress=True)  # suppress scientific float notation
+
+columns=["ID","Title","Release_Date","Video_Release_Date","IMDB","Unknown","Action",
+         "Adventure","Animation","Childrens","Comedy","Crime","Documentary",
+        "Drama","Fantasy","FilmNoir","Horror","Musical","Mystery","Ramance","Sci-fi",
+        "Thriller","War","Western"]
+df=pd.read_csv("data.txt",sep="|",names=columns)
+
+#cleaning the data
+#lets see of there are duplicates in the dataframe-
+print sum(df.duplicated('Title'))
+#so there are some duplicates. Lets remove the duplicates
+
+# ID is just seriel number, I can idetify the movie from its Tilte
+# Release Data, Video_release date is not needed for clustering
+# IMDB is just the IMDB link-not needed
+# we can also use this to find which movies are repeating more tahn once
+# names = df.Title.value_counts()
+# print names[names > 1]
+print df.shape
+
+#delete duplicates
+df.drop_duplicates(subset=['Title'],inplace=True)
+print df.shape # deleted 18 duplicates..
+
+#remove unwanted columns--
+movies=df.drop(['ID','Release_Date','Video_Release_Date','IMDB'],axis=1)
+
+print movies.head()
+
+M = movies.drop(['Title'],axis=1)
+
+from sklearn.cluster import KMeans
+kmeans = KMeans(n_clusters=7,n_init=20) #see explanation of  n_init in adv & disadv of k means below
+kmeans.fit(M)
+y_kmeans = kmeans.predict(M)
+print y_kmeans
+
+cluster_range = range( 1, 15 )
+cluster_errors = []
+​
+for i in cluster_range:
+  clusters = KMeans( i )
+  clusters.fit(M)
+  cluster_errors.append(clusters.inertia_)
+​
+plt.figure(figsize=(8,5))
+plt.plot( cluster_range, cluster_errors, marker = "o" )
