@@ -1,0 +1,56 @@
+##Random Forest on Adult Dataset in Python
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pydotplus
+%matplotlib inline
+
+df=pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
+               names=['age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status', 
+                      'occupation','relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 
+                      'hours-per-week', 'native-country','Salary'])
+
+df = pd.read_csv("C:\Users\Prajwal\Documents\Python Scripts\Models Built\Random Forest\Adult.csv", index_col=0)
+
+df.head()
+df.columns
+
+#Create Dependent and Independent variables
+X = df[['age', 'fnlwgt','education-num', 
+        'capital-gain', 'capital-loss', 'hours-per-week']]
+y = df['Salary']
+
+#Build the RF model
+from sklearn.ensemble import RandomForestClassifier
+rfc = RandomForestClassifier(n_estimators=1500,max_features=4,oob_score=True)
+rfc.fit(X, y)
+
+#Plot the Variable Importance Graph
+features = X.columns
+importances = rfc.feature_importances_
+indices = np.argsort(importances)
+
+plt.figure(figsize=(10,6))
+plt.title('Feature Importances')
+plt.barh(range(len(indices)), importances[indices], color='b', align='center')
+plt.yticks(range(len(indices)), features[indices])
+plt.xlabel('Relative Importance')
+plt.show()
+
+#Calculate the OOB Error
+oob_error = 1 - rfc.oob_score_
+print (oob_error)
+
+rfc_pred_test = rfc.predict(X)
+print pd.crosstab(y,rfc_pred_test)
+
+col_0    <=50K   >50K
+Salary               
+ <=50K   24716      3
+ >50K       37   7804
+
+from sklearn.metrics import classification_report,confusion_matrix
+print(classification_report(y,rfc_pred_test))
+print "*********"
+print (confusion_matrix(y,rfc_pred_test))
