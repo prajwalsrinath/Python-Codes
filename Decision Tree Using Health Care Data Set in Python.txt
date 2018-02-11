@@ -1,0 +1,144 @@
+##Decision Tree Using Health Care Data Set
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pydotplus
+%matplotlib inline
+
+
+df=pd.read_csv("quality.csv")#read the csv into python
+print df.columns
+print df.shape
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(df[["DaysSinceLastERVisit","Narcotics"]],df['PoorCare'],test_size=0.3,random_state=0)
+
+from sklearn import tree
+mycols=["DaysSinceLastERVisit","Narcotics"]
+
+cl_tree=tree.DecisionTreeClassifier(criterion="gini",random_state=0,max_depth=2,min_samples_leaf=20)
+#the below 2 parameters can be used to control for Overfitting. Try to play around with these
+#and come up with a better model
+#max_depth=5 --- defines the depth of the tree.. More depth may lead to Overfitting
+#min_samples_leaf=8--- defines when the splitting will stop. here for example
+# if a node/BUCKET has less than 8 data pints, it will not go for a further split. This too wil control
+#overfitting. Smaller thsi value, more the overfitting.
+
+cl_tree=cl_tree.fit(X_train,y_train)
+
+#lets first predict on the train data
+pred_train=cl_tree.predict(X_train)
+
+#for the confusion matrix
+print pd.crosstab(y_train,pred_train)
+
+# since we gave a very small depth &/or Very large value of min_samples_leaf, the Model is Underfit
+#it is going for very fewer spilts.... If we see below it is not even predicitng a 1. 
+#Its only predicting 0's.
+​
+Accuracy_train=67.0/(67+24.0)
+print Accuracy_train #74%
+
+col_0      0
+PoorCare    
+0         67
+1         24
+0.736263736264
+
+#download graphviz from here and install on your sustem
+#https://graphviz.gitlab.io/_pages/Download/Download_windows.html
+#graphviz-2.38.msi.this has to be downloaded
+#then go to my computer properties--> advanced system settings--> Environment variables
+#NEW -->
+#variable name ---  PATH
+#variable value  -----   C:\Program Files (x86)\Graphviz2.38\bin
+
+from sklearn.externals.six import StringIO  
+from IPython.display import Image  
+from sklearn.tree import export_graphviz
+import pydotplus
+
+dot_data = StringIO()
+export_graphviz(cl_tree, out_file=dot_data, feature_names=mycols, 
+                filled=True, rounded=True,
+                special_characters=True)
+​
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue()) 
+Image(graph.create_png())
+graph.write_png('tree_1.png')
+
+#This wouold give you a PNG image in your working directory
+#Lets understand the tree
+#First is A variables and a decisio on it
+#Second is the value of gini index
+#Third is the # of data points in the sample
+# Forth is the [# of 0's , # of 1's]
+
+#use the tree to make prediction
+pred=cl_tree.predict(X_test)
+
+#for the confusion matrix
+print pd.crosstab(y_test,pred)
+Accuracy_test=(31.0)/(31+9.0)
+print Accuracy_test
+
+col_0      0
+PoorCare    
+0         31
+1          9
+0.775
+
+#so we Got 73% on train & 77% on Test.... Both are comparable. But since no 1's are getting predicted
+#it means it is a very simple... or underfot model..lets increease the DEPTH and decrease 
+#min_samples_leaf to maek the tree more complex... Look at the Imarges formed to verify
+
+cl_tree2=tree.DecisionTreeClassifier(criterion="gini",random_state=0,max_depth=12,min_samples_leaf=3)
+
+#THIS MEANS IT WILL GO ON SPLITITNG AS LONG AS IT EITHER REACHES A DEPTH OF 12 OR IT HAS LESS THAN
+
+#3 POINTS IN THE BUCKET......
+cl_tree2=cl_tree2.fit(X_train,y_train)
+
+#lets first predict on the train data
+pred_train=cl_tree2.predict(X_train)
+
+#for the confusion matrix
+print pd.crosstab(y_train,pred_train)
+Accuracy_train=(64.0+14)/(64+14.0+10+3)
+print Accuracy_train #85.7% better Than before.But we shud make sure performace is good in test as wel
+print "*****************"
+dot_data = StringIO()
+export_graphviz(cl_tree2, out_file=dot_data, feature_names=mycols, 
+                filled=True, rounded=True,
+                special_characters=True)
+​
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue()) 
+Image(graph.create_png())
+graph.write_png('tree_2.png')
+
+#use the tree to make prediction o test
+pred2=cl_tree2.predict(X_test)
+
+#for the confusion matrix
+print pd.crosstab(y_test,pred2)
+Accuracy_test=(28.0+4)/(28+4+5+3.0)
+print Accuracy_test80% on test which is quit good...
+
+col_0      0   1
+PoorCare        
+0         64   3
+1         10  14
+0.857142857143
+*****************
+col_0      0  1
+PoorCare       
+0         28  3
+1          5  4
+0.8
+In [ ]:
+
+
+#So these parameters are good to freeze as the accuracy is consistently higher in bith train & test
+# Decision tree works weel if # of data points are huge...in 1000's. 
+# this data is preety small and only for illustration purpose....
