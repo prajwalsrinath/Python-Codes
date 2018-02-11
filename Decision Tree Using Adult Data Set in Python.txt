@@ -1,0 +1,82 @@
+##Decision Tree Using Adult Data Set
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import pydotplus
+%matplotlib inline
+
+##read the data
+#read thru this link to know more abput the data
+#https://archive.ics.uci.edu/ml/datasets/Adult
+#lets read the data directly from the website
+df=pd.read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data",
+               names=['age', 'workclass', 'fnlwgt', 'education', 'education-num', 'marital-status', 
+                      'occupation','relationship', 'race', 'sex', 'capital-gain', 'capital-loss', 
+                      'hours-per-week', 'native-country','Salary'])
+
+df = pd.read_csv("C:\Users\Prajwal\Documents\Python Scripts\Models Built\Random Forest\Adult.csv", index_col=0)
+df.head()
+
+#dependent variable is whether the person earns >50k or <=50k
+#split the data
+#split the data into train & test using a random seed. Take seed as  1 so that all get the same answer
+#take all columns as IV and <=50K as Dependent variable
+​
+#before splitting we wil have to create dummy variables---
+#lets do that and come back to splitting--
+​
+df1=pd.get_dummies((df.drop(["age","capital-gain","capital-loss","hours-per-week","Salary"],axis=1)),drop_first=True)
+df_new=pd.concat([df,df1],axis=1)
+df_new.reset_index(inplace=True,drop=True)
+print df_new.columns
+
+#not including fnlwgt & workclass n my model as they have too many categories
+df2=df_new.drop(["workclass",'fnlwgt',"education","marital-status","occupation","relationship","race","sex","native-country"],axis=1)
+df2.head()
+
+#create the independent variables
+indep=list(df2.columns)
+indep.remove(indep[5])
+
+#now lets start the slitting process 
+from sklearn.externals.six import StringIO  
+from IPython.display import Image  
+from sklearn.tree import export_graphviz
+import pydotplus
+​
+from sklearn.cross_validation import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(df2[indep],df2['Salary'],test_size=0.3,random_state=1)
+​
+from sklearn import tree
+from sklearn.metrics import accuracy_score
+#build a Decision tree and give the max_depth as a variable x. Keep this Code in a loop and start the
+#variable from depth(x)=1 to depth x=50... 
+#using this predict on the train data and also on the test data....
+#keep saving the accuracy for both train and test data INTO 2 VARIABLES (LISTS/ARAYS) and for each depth (1 to 50) and finally prepare 
+​
+train_A=[]
+test_A=[]
+for x in range(1,51):
+    cl_tree1=tree.DecisionTreeClassifier(criterion='gini',random_state=1,max_depth=x)
+    cl_tree1=cl_tree1.fit(X_train,y_train)
+    pred_train=cl_tree1.predict(X_train)
+    pred_test=cl_tree1.predict(X_test)
+    train_A.append(accuracy_score(y_train,pred_train))
+    test_A.append(accuracy_score(y_test,pred_test))
+​
+#plot #1-------- for training data
+#x axis shud be depth (1 to 50)
+#y axi shud be train data accuracy corresponding to depth x=1 to 50///
+# the graph shud show less accuarcy at the begining when depth=less and accuracy shud
+#gradually increase...as depth increasees
+​
+#plot #2---- for test data
+#x axis shud be depth (1 to 50)
+#y axi shud be test data accuracy corresponding to depth x=1 to 50///
+# the graph shud show less accuarcy at the begining when depth=less and accuracy shud 
+#gradually increase for higher depth and then strat decreasing again...as depth beocmes too big..
+# this will be due to OVERfittinG...
+# through this Homework OVERFITTING SHUD BE CLEAR TO YOU IN DECISION TREEE.......
+#U CAN DISCUSS WITHIN YOUSELVESS... 
+plt.scatter(range(1,51),train_A,color="red")
+plt.scatter(range(1,51),test_A,color="blue")
